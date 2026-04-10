@@ -1,0 +1,12 @@
+function main(params) {
+  if (!params.dns) return params;
+
+  // 删除导致并发查询的 fallback 及其过滤器
+  delete params.dns['fallback'];
+  delete params.dns['fallback-filter'];
+
+  // 禁用 respect-rules，防止底层规则强制触发额外的并发 DNS 解析
+  params.dns['respect-rules'] = false;
+
+  return params;
+}
