@@ -1,0 +1,55 @@
+function main(config) {
+  // 1. 安全校验
+  if (!config.dns) config.dns = {};
+  
+  // 2. 开启 Fake-IP（伪装 IP 是防漏的绝对基石）
+  config.dns['enable'] = true;
+  config.dns['ipv6'] = false;
+  config.dns['enhanced-mode'] = 'fake-ip';
+  config.dns['fake-ip-range'] = '198.18.0.1/16';
+  config.dns['fake-ip-filter'] = ['*.lan', '*.local', 'localhost'];
+
+  // 3. 解决 Timeout 痛点：全部使用国内高可用 DNS！
+  // 不要慌，因为配合后面的规则，国外网站根本不会调用它
+  config.dns['default-nameserver'] = ['223.5.5.5', '119.29.29.29'];
+  config.dns['nameserver'] = ['223.5.5.5', '119.29.29.29'];
+
+  // 4. 彻底删除 Fallback（斩断并发查询泄露的元凶）
+  delete config.dns['fallback'];
+  delete config.dns['fallback-filter'];
+  delete config.dns['nameserver-policy']; // 电脑端删掉策略分流，防止内核报错
+
+  // 5. 核心防御：给所有 IP 规则强加 no-resolve
+  // 告诉 Clash：遇到不认识的域名，绝对不许用国内 DNS 去查真实 IP！
+  if (config.rules && Array.isArray(config.rules)) {
+    config.rules = config.rules.map(rule => {
+      if (typeof rule === 'string') {
+        // 修复：添加了 || 逻辑运算符
+        if ((rule.startsWith('GEOIP') || rule.startsWith('IP-') || rule.startsWith('RULE-SET')) && !rule.includes('no-resolve')) {
+          return rule + ',no-resolve';
+        }
+      }
+      return rule;
+    });
+  } else {
+    config.rules = [];
+  }
+
+  // 6. 安全抓取你的代理组名称（防崩溃）
+  let proxyName = "PROXY";
+  if (config['proxy-groups'] && Array.isArray(config['proxy-groups']) && config['proxy-groups'].length > 0) {
+    proxyName = config['proxy-groups'][0].name; 
+  }
+
+  // 7. 将测试网站死死锁进代理隧道
+  // 修复：添加了反引号 ` 包裹模板字符串
+  const extraRules = [
+    `DOMAIN-KEYWORD,browserleaks,${proxyName}`,
+    `DOMAIN-KEYWORD,dnsleaktest,${proxyName}`,
+    "DOMAIN-SUFFIX,local,DIRECT"
+  ];
+  
+  config.rules = extraRules.concat(config.rules);
+
+  return config;
+}
