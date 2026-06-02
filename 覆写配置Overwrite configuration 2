@@ -40,14 +40,6 @@ function main(config) {
   if (config['proxy-groups'] && Array.isArray(config['proxy-groups']) && config['proxy-groups'].length > 0) {
     proxyName = config['proxy-groups'][0].name; 
   }
-
-  // 7. 将测试网站死死锁进代理隧道
-  // 修复：添加了反引号 ` 包裹模板字符串
-  const extraRules = [
-    `DOMAIN-KEYWORD,browserleaks,${proxyName}`,
-    `DOMAIN-KEYWORD,dnsleaktest,${proxyName}`,
-    "DOMAIN-SUFFIX,local,DIRECT"
-  ];
   
   config.rules = extraRules.concat(config.rules);
 
